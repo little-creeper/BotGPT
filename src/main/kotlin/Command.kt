@@ -39,6 +39,7 @@ fun chatEventHandler(idL: Long, message: String, quote: QuoteReply): MessageChai
                 val content = (response.choices[0].message.content).trim()
                 MessageChainBuilder().append(quote).append(PlainText(content)).build()
             } catch (e: Exception) {
+                BotGPT.logger.warning(e.message)
                 MessageChainBuilder().append(quote).append(PlainText("内部错误")).build()
             }
         } else

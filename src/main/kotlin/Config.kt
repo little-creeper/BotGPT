@@ -10,6 +10,7 @@ object Config : AutoSavePluginConfig("config") {
     val socksProxyPort by value(0)
     val token by value("ChatGPTToken")
     val expirationTime by value(60)
+    val timeout by value<Long>(100000)
     val cooldown by value(30)
     val model by value("gpt-3.5-turbo")
     val separator by value(" ")

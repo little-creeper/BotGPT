@@ -4,6 +4,7 @@ import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.*
 import io.ktor.client.engine.okhttp.*
+import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -63,6 +64,10 @@ object Client {
             install(ContentNegotiation) {
                 json()
             }
+            install(HttpTimeout) {
+                requestTimeoutMillis = Config.timeout
+                socketTimeoutMillis = Config.timeout
+            }
             engine {
                 if (Config.httpProxyUrl != "")
                     proxy = ProxyBuilder.http(Config.httpProxyUrl)
@@ -75,6 +80,10 @@ object Client {
     fun sendRequest(requestObject: RequestObject): ReceivedObject {
         return runBlocking {
             return@runBlocking client.post(Config.apiUrl) {
+                timeout {
+                    requestTimeoutMillis = Config.timeout
+                    socketTimeoutMillis = Config.timeout
+                }
                 headers {
                     headers {
                         append(HttpHeaders.Authorization, "Bearer ${Config.token}")
