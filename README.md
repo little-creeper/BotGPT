@@ -8,7 +8,7 @@
 
 自行准备OpenAI token
 
-权限:cn.mpamc.botgpt:botgpt.chat(可给予玩家或群聊)
+权限:cn.mpamc.botgpt:botgpt.chat(可给予用户或群聊)
 
 群聊@机器人 [要提问的内容] 或 清空会话
 
