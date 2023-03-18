@@ -10,7 +10,6 @@ import net.mamoe.mirai.event.GlobalEventChannel
 import net.mamoe.mirai.event.events.FriendMessageEvent
 import net.mamoe.mirai.event.events.GroupMessageEvent
 import net.mamoe.mirai.message.data.At
-import net.mamoe.mirai.message.data.MessageSource.Key.quote
 import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.utils.info
 
@@ -18,7 +17,7 @@ object BotGPT : KotlinPlugin(
     JvmPluginDescription(
         id = "cn.mpsmc.botgpt",
         name = "BotGPT",
-        version = "0.1.0",
+        version = "0.2.1",
     ) {
         author("sectly")
     }
@@ -26,20 +25,23 @@ object BotGPT : KotlinPlugin(
 
 
     override fun onEnable() {
+        logger.info { "MPSMC BotGPT 加载中" }
         Config.reload()
         Data.reload()
         Client.load()
-        logger.info { "MPSMC BotGPT loaded" }
         val chatPermission = PermissionService.INSTANCE.register(permissionId("botgpt.chat"), "BotGPT聊天权限")
+        logger.info { " _____       _    _____  _____  _____ " }
+        logger.info { "| __  | ___ | |_ |   __||  _  ||_   _|" }
+        logger.info { "| __ -|| . ||  _||  |  ||   __|  | |  " }
+        logger.info { "|_____||___||_|  |_____||__|     |_|  " }
+        logger.info { "MPSMC BotGPT 已加载" }
         launch {
             GlobalEventChannel.parentScope(this).subscribeAlways<GroupMessageEvent> { event ->
                 run {
-                    if (event.group.permitteeId.hasPermission(chatPermission) && (event.message[1] is At) && ((event.message[1] as At).target == event.bot.id) && (event.message[2] is PlainText)) {
+                    if (event.group.permitteeId.hasPermission(chatPermission) && (event.message[1] is At) && ((event.message[1] as At).target == event.bot.id) && event.message.size >= 3 && (event.message[2] is PlainText)) {
                         event.group.sendMessage(
                             chatEventHandler(
-                                sender.id,
-                                event.message.contentToString().removeRange(0 until event.bot.id.toString().length + 2),
-                                event.message.quote()
+                                event.group, event
                             )
                         )
                     }
@@ -50,9 +52,7 @@ object BotGPT : KotlinPlugin(
                     if (sender.permitteeId.hasPermission(chatPermission) && (event.message[1] is PlainText)) {
                         event.sender.sendMessage(
                             chatEventHandler(
-                                sender.id,
-                                event.message.contentToString(),
-                                event.message.quote()
+                                sender, event
                             )
                         )
                     }
@@ -63,8 +63,6 @@ object BotGPT : KotlinPlugin(
 
     override fun onDisable() {
         Client.close()
-        logger.info { "MPSMC BotGPT unloaded" }
+        logger.info { "MPSMC BotGPT 已卸载" }
     }
 }
-
-

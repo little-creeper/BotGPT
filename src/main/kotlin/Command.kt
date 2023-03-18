@@ -1,49 +1,53 @@
 package cn.mpsmc
 
-import net.mamoe.mirai.message.data.MessageChain
-import net.mamoe.mirai.message.data.MessageChainBuilder
-import net.mamoe.mirai.message.data.PlainText
-import net.mamoe.mirai.message.data.QuoteReply
-import kotlin.math.absoluteValue
+import net.mamoe.mirai.contact.Contact
+import net.mamoe.mirai.contact.User
+import net.mamoe.mirai.event.events.MessageEvent
+import net.mamoe.mirai.message.data.*
+import net.mamoe.mirai.message.data.MessageSource.Key.quote
 
-fun chatEventHandler(idL: Long, message: String, quote: QuoteReply): MessageChain {
-    val id = idL.toString()
-    if (Data.lastChatTime[id] != null)
-        if (Config.expirationTime != -1 && ((System.currentTimeMillis() / 1000)) - Data.lastChatTime[id]!! >= Config.expirationTime)
-            Data.historicalMessages.remove(id)
-    if (message == "清空会话")
-        return MessageChainBuilder().append(quote)
-            .append(if (Data.historicalMessages.remove(id) != null) "清空成功" else "清空失败").build()
+fun chatHandler(source: String, message: String): List<String> {
+    val userData = UserDataHandler(source)
+    if (message == Config.clearCommand)
+        return listOf(if (userData.removeAllFromHistoricalMessages()) "清空成功" else "清空失败")
     else {
-        val cd = checkCoolDown(id)
-        BotGPT.logger.info(cd.toString())
-        if (cd >= 0) {
-            var finalMessage = ""
-            var finalMessages: MutableList<String> = mutableListOf()
-            val historicalMessages = Data.historicalMessages[id]
-            Data.historicalMessages.remove(id)
-            finalMessages.add(message)
-            if (historicalMessages != null) {
-                finalMessages = (historicalMessages + message).toMutableList()
-            }
-            for (i in finalMessages) {
-                finalMessage += i + Config.separator
-            }
-            finalMessage = finalMessage.substring(0 until finalMessage.length - Config.separator.length)
-            Data.lastChatTime[id] = System.currentTimeMillis() / 1000
-            Data.historicalMessages[id] = finalMessages
-            BotGPT.logger.info("$id -> $finalMessage")
-            return try {
+        return if (userData.cooldown <= 0) {
+            userData.updateLastChatTime()
+            userData.addElementToHistoricalMessages(Message("user", message))
+            try {
                 val response =
-                    Client.sendRequest(RequestObject(Config.model, listOf(Messages("user", finalMessage))))
-                val content = (response.choices[0].message.content).trim()
-                MessageChainBuilder().append(quote).append(PlainText(content)).build()
+                    Client.sendRequest(RequestObject(Config.openAI.model, userData.getHistoricalMessages().toList()))
+                val c = (response.choices[0].message.content).trim()
+                userData.addElementToHistoricalMessages(Message("assistant", c))
+                userData.updateLastChatTime()
+                c.split('\n')
             } catch (e: Exception) {
                 BotGPT.logger.warning(e.message)
-                MessageChainBuilder().append(quote).append(PlainText("内部错误")).build()
+                userData.removeAllFromHistoricalMessages()
+                listOf(Config.messages.errorMessage)
             }
         } else
-            return MessageChainBuilder().append(quote).append(PlainText("冷却中 [${checkCoolDown(id).absoluteValue}]"))
-                .build()
+            return listOf(Config.messages.cooldownMessage.replace("%cd%", userData.cooldown.toString()))
     }
+}
+
+fun chatEventHandler(context: Contact, event: MessageEvent): MessageChain {
+    val message: String
+    val source: String
+    if (context is User) {
+        message = event.message.contentToString()
+        source = 'u' + context.id.toString()
+    } else {
+        message = event.message.contentToString().removeRange(0 until event.bot.id.toString().length + 2)
+        source = 'g' + context.id.toString()
+    }
+    val apiReply = chatHandler(source, message)
+    return if (apiReply.size > 1)
+        buildForwardMessage(context, ForwardMessage.DisplayStrategy.Default) {
+            for (i in apiReply)
+                if (i.isNotEmpty())
+                    event.bot says PlainText(i)
+        }.toMessageChain()
+    else
+        event.message.quote() + PlainText(apiReply[0]).toMessageChain()
 }
