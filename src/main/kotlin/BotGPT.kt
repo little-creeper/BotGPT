@@ -17,7 +17,7 @@ object BotGPT : KotlinPlugin(
     JvmPluginDescription(
         id = "cn.mpsmc.botgpt",
         name = "BotGPT",
-        version = "0.2.1",
+        version = "0.2.5",
     ) {
         author("sectly")
     }
@@ -28,41 +28,40 @@ object BotGPT : KotlinPlugin(
         logger.info { "MPSMC BotGPT 加载中" }
         Config.reload()
         Data.reload()
-        Client.load()
         val chatPermission = PermissionService.INSTANCE.register(permissionId("botgpt.chat"), "BotGPT聊天权限")
         logger.info { " _____       _    _____  _____  _____ " }
         logger.info { "| __  | ___ | |_ |   __||  _  ||_   _|" }
         logger.info { "| __ -|| . ||  _||  |  ||   __|  | |  " }
         logger.info { "|_____||___||_|  |_____||__|     |_|  " }
+        logger.info { "" }
         logger.info { "MPSMC BotGPT 已加载" }
-        launch {
+
             GlobalEventChannel.parentScope(this).subscribeAlways<GroupMessageEvent> { event ->
-                run {
                     if (event.group.permitteeId.hasPermission(chatPermission) && (event.message[1] is At) && ((event.message[1] as At).target == event.bot.id) && event.message.size >= 3 && (event.message[2] is PlainText)) {
-                        event.group.sendMessage(
-                            chatEventHandler(
-                                event.group, event
+                        launch {
+                            event.group.sendMessage(
+                                chatEventHandler(
+                                    event.group, event
+                                )
                             )
-                        )
-                    }
+                        }
                 }
             }
             GlobalEventChannel.parentScope(this).subscribeAlways<FriendMessageEvent> { event ->
                 run {
                     if (sender.permitteeId.hasPermission(chatPermission) && (event.message[1] is PlainText)) {
-                        event.sender.sendMessage(
-                            chatEventHandler(
-                                sender, event
+                        launch {
+                            event.sender.sendMessage(
+                                chatEventHandler(
+                                    sender, event
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
-        }
     }
-
     override fun onDisable() {
-        Client.close()
         logger.info { "MPSMC BotGPT 已卸载" }
     }
 }

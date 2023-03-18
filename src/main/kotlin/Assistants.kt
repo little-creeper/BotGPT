@@ -64,7 +64,7 @@ class UserDataHandler(private val source: String) {
         Data.lastChatTime[source] = System.currentTimeMillis() / 1000
     }
 
-    fun removeAllFromHistoricalMessages(): Boolean = Data.historicalMessages.remove(source) != null
+    fun removeFromHistoricalMessages(): Boolean = Data.historicalMessages.remove(source) != null
     fun getHistoricalMessages() = Data.historicalMessages[source] ?: mutableListOf()
     fun addElementToHistoricalMessages(msg: Message) {
         if (Data.historicalMessages[source] != null)
@@ -84,31 +84,27 @@ class UserDataHandler(private val source: String) {
 }
 
 
-object Client {
-    private lateinit var client: HttpClient
-
-    fun close() = client.close()
-    fun load() {
-        client = HttpClient(OkHttp) {
-            install(ContentNegotiation) {
-                json()
-            }
-            install(HttpTimeout) {
-                requestTimeoutMillis = Config.client.timeout
-                socketTimeoutMillis = Config.client.timeout
-            }
-            engine {
-                if (Config.client.httpProxyUrl != "")
-                    proxy = ProxyBuilder.http(Config.client.httpProxyUrl)
-                if (Config.client.socksProxyUrl != "")
-                    proxy = ProxyBuilder.socks(Config.client.socksProxyUrl, Config.client.socksProxyPort)
-            }
+class Client {
+    private var client: HttpClient = HttpClient(OkHttp) {
+        install(ContentNegotiation) {
+            json()
+        }
+        install(HttpTimeout) {
+            requestTimeoutMillis = Config.client.requestTimeout
+            connectTimeoutMillis = Config.client.connectTimeout
+            socketTimeoutMillis = Config.client.requestTimeout + Config.client.connectTimeout
+        }
+        engine {
+            if (Config.client.httpProxyUrl != "")
+                proxy = ProxyBuilder.http(Config.client.httpProxyUrl)
+            if (Config.client.socksProxyUrl != "")
+                proxy = ProxyBuilder.socks(Config.client.socksProxyUrl, Config.client.socksProxyPort)
         }
     }
 
     fun sendRequest(requestObject: RequestObject): ReceivedObject {
-        return runBlocking {
-            return@runBlocking client.post(Config.openAI.apiUrl) {
+        val rec = runBlocking {
+            client.post(Config.openAI.apiUrl) {
                 headers {
                     headers {
                         append(HttpHeaders.Authorization, "Bearer ${Config.openAI.token}")
@@ -118,6 +114,8 @@ object Client {
                 setBody(requestObject)
             }.body() as ReceivedObject
         }
+        client.close()
+        return rec
     }
 }
 

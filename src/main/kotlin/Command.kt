@@ -9,21 +9,23 @@ import net.mamoe.mirai.message.data.MessageSource.Key.quote
 fun chatHandler(source: String, message: String): List<String> {
     val userData = UserDataHandler(source)
     if (message == Config.clearCommand)
-        return listOf(if (userData.removeAllFromHistoricalMessages()) "清空成功" else "清空失败")
+        return listOf(if (userData.removeFromHistoricalMessages()) Config.messages.clearSucceed else Config.messages.clearFailed)
     else {
         return if (userData.cooldown <= 0) {
-            userData.updateLastChatTime()
+            if (Config.singleQuestion && userData.getHistoricalMessages().lastOrNull()?.role == "user")
+                return listOf(Config.messages.waitForReply)
             userData.addElementToHistoricalMessages(Message("user", message))
+            userData.updateLastChatTime()
             try {
                 val response =
-                    Client.sendRequest(RequestObject(Config.openAI.model, userData.getHistoricalMessages().toList()))
+                    Client().sendRequest(RequestObject(Config.openAI.model, userData.getHistoricalMessages().toList()))
                 val c = (response.choices[0].message.content).trim()
                 userData.addElementToHistoricalMessages(Message("assistant", c))
                 userData.updateLastChatTime()
                 c.split('\n')
             } catch (e: Exception) {
                 BotGPT.logger.warning(e.message)
-                userData.removeAllFromHistoricalMessages()
+                userData.removeFromHistoricalMessages()
                 listOf(Config.messages.errorMessage)
             }
         } else

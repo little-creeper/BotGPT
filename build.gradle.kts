@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "cn.mpsmc"
-version = "0.2.1"
+version = "0.2.5"
 
 repositories {
     maven("https://maven.aliyun.com/repository/public")
