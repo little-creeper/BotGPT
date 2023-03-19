@@ -2,7 +2,7 @@
 
 对接OpenAI ChatGPT API提供私聊、群聊AI对话的Mirai Console插件(QQ机器人)
 ### features
-[x] 可配置连续对话、速率限制、最大字符限制
+- [x] 可配置连续对话、速率限制、最大字符限制
 
 - [x] 可配置http、socks代理
 
